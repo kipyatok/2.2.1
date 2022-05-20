@@ -1,40 +1,50 @@
 package hiber.dao;
 
 import hiber.model.User;
+import org.hibernate.Session;
 import org.hibernate.SessionFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 
-import javax.persistence.Query;
-import javax.persistence.TypedQuery;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public class UserDaoImp implements UserDao {
 
+    private final SessionFactory sessionFactory;
 
-   @Autowired
-   private SessionFactory sessionFactory;
+    public UserDaoImp(SessionFactory sessionFactory) {
+        this.sessionFactory = sessionFactory;
+    }
 
-   @Override
-   public void add(User user) {
-      sessionFactory.getCurrentSession().save(user);
-   }
+    @Override
+    public void add(User user) {
+        getSession().save(user);
+        getSession().flush();
+    }
 
-   @Override
-   @SuppressWarnings("unchecked")
-   public List<User> listUsers() {
-      TypedQuery<User> query=sessionFactory.getCurrentSession().createQuery("from User");
-      return query.getResultList();
-   }
+    @Override
+    @SuppressWarnings("unchecked")
+    public List<User> listUsers() {
+        return getSession().createQuery("from User").list();
+    }
 
-   @Override
-   public User getUser(String model, int series) {
-      String hql = "SELECT a FROM User a INNER JOIN a.car c WHERE c.model = :model and c.series = :series";
-      TypedQuery<User> query = sessionFactory.getCurrentSession().createQuery(hql);
-      query.setParameter("model", model);
-      query.setParameter("series", series);
-      return query.getResultList().get(0);
-   }
+    @Override
+    public User getUser(String model, int series) {
+        return Optional.ofNullable((User)
+                        getSession()
+                                .createQuery(
+                                        "SELECT a FROM User a INNER JOIN a.car c " +
+                                                "WHERE c.model = :model and c.series = :series")
+                                .setParameter("model", model)
+                                .setParameter("series", series)
+                                .uniqueResult())
+                .orElse(null);
+    }
+
+    Session getSession() {
+        return sessionFactory.getCurrentSession();
+    }
+
 
 }
